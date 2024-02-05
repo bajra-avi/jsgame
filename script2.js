@@ -148,7 +148,7 @@ function starts(){
             if (this.shouldJump) {
                 this.jumpCounter++;
         
-                const reducedJumpHeight = this.jumpHeight / 2;
+                const reducedJumpHeight = this.jumpHeight / 1.8;
         
                 if (this.jumpCounter < 15) {
                     this.y -= reducedJumpHeight;
@@ -226,6 +226,21 @@ function starts(){
             this.x -= this.slideSpeed;
         }
     }
+    class coins{
+        constructor(x, y, size, color, length) {
+            this.x =x;
+            this.y = y;
+            this.size = size;
+            this.color = color;
+            this.length = length;
+    }
+    
+        drawFaultyWire(x, y, size, color, length) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, length, size);
+        }
+}
+    
     
     
     
@@ -243,9 +258,10 @@ function starts(){
         let s1 = Object.assign(Object.create(Object.getPrototypeOf(player)), player);
         let s2 = Object.assign(Object.create(Object.getPrototypeOf(block)), block);
     
-        s2.size = s2.size - 10;
-        s2.x = s2.x + 10;
-        s2.y = s2.y + 10;
+        s2.size = s2.size;
+        s2.x = s2.x - 10;
+        s2.y = s2.y - 15;
+
         return !(
             s1.x > s2.x + s2.size ||
             s1.x + s1.size < s2.x ||
