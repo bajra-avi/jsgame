@@ -7,12 +7,75 @@ const cardScore = document.getElementById('card-score');
 const startButton = document.getElementById('startButton');
 const playAgain = document.getElementById('play_again');
 
+const SCALE = 2;
+const WIDTH = 16;
+const HEIGHT = 18;
+const SCALED_WIDTH = SCALE * WIDTH;
+const SCALED_HEIGHT = SCALE * HEIGHT;
+
+let scoreSFX = new Audio("https://archive.org/download/classiccoin/classiccoin.wav");
+let gameOverSFX = new Audio("https://archive.org/download/smb_gameover/smb_gameover.wav");
+let jumpSFX = new Audio("https://archive.org/download/jump_20210424/jump.wav");
+let gameSFX = new Audio('mario.mp3');
+
+
+//Enemy
+// let img = new Image();
+// img.src = 'bowser.png';
+let blockSpriteImg1 = new Image();
+blockSpriteImg1.src = 'frame-1.png';
+
+let blockSpriteImg2 = new Image();
+blockSpriteImg2.src = 'frame-2.png';
+
+
+
+//player
+
+let spriteImg = new Image();
+spriteImg.src = 'https://opengameart.org/sites/default/files/Green-Cap-Character-16x18.png';
+
+//prite details
+
+const playerSprite = {
+    x: 0, // Initial X position in the sprite sheet
+    y: 0, // Fixed Y position for the player sprite
+    frameWidth: 16, // Width of each frame in the sprite sheet
+    frameHeight: 18, // Height of each frame in the sprite sheet
+    numFrames: 3, // Number of frames in the sprite sheet
+    currentFrame: 4, // Current frame index
+};
+
+const blockSprites = [blockSpriteImg1, blockSpriteImg2];
+const blockSprite = {
+    x: 0, // Initial X position in the sprite sheet
+    y: 0, // Fixed Y position for the block sprite
+    frameWidth: 16, // Width of each frame in the sprite sheet
+    frameHeight: 16, // Height of each frame in the sprite sheet
+    numFrames: blockSprites.length, // Number of frames in the sprite sheet
+    currentFrame: 0, // Current frame index
+};
+
+
+function drawPlayerFrame(canvasX, canvasY) {
+    // ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(
+        spriteImg,
+        playerSprite.currentFrame * playerSprite.frameWidth, playerSprite.y, playerSprite.frameWidth, playerSprite.frameHeight,
+        canvasX, canvasY, SCALED_WIDTH, SCALED_HEIGHT
+    );
+}
+
 function starts(){
     startButton.style.display = 'none';
     canvas.style.display = 'block';
+    gameSFX.play();
+
+    document.body.appendChild(canvas)
+
     function startGame(){
         presetTime = 1000;
-        player = new Player(50, 475, 25, 'black');
+        player = new Player(50, 460, 5, 'black');
         arrayBlockss = [];
         enemySpeed = 5;
         score = 0;
@@ -27,7 +90,11 @@ function starts(){
         requestAnimationFrame(animate);
     }
     playAgain.addEventListener('click',  function() {
-        restartGame(this);});
+        restartGame(this);
+        gameSFX.play();
+        gameOverSFX.pause();
+        gameOverSFX.currentTime = 0;
+    });
     
     
     
@@ -37,7 +104,7 @@ function starts(){
         // ctx.lineTo(600, 400);
         ctx.moveTo(a, b);
         ctx.lineTo(c, d);
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 6;
         ctx.strokeStyle = 'black';
         ctx.stroke();
     }
@@ -68,10 +135,12 @@ function starts(){
             this.y = y;
             this.size = size;
             this.color = color;
-            this.jumpHeight = 12;
+            this.jumpHeight = 8;
             this.shouldJump = false;
             this.jumpCounter = 0;
             this.currentLane = 3;
+            this.frameUpdateInterval = 5; // Adjust this value to control frame rate
+            this.frameUpdateCounter = 0;
             
         }
     
@@ -79,7 +148,7 @@ function starts(){
             if (this.shouldJump) {
                 this.jumpCounter++;
         
-                const reducedJumpHeight = this.jumpHeight / 2.3;
+                const reducedJumpHeight = this.jumpHeight / 2;
         
                 if (this.jumpCounter < 15) {
                     this.y -= reducedJumpHeight;
@@ -98,8 +167,13 @@ function starts(){
     
         draw() {
             this.jump();
-            ctx.fillStyle = this.color;
-            ctx.fillRect(this.x, this.y, this.size, this.size);
+            if (this.frameUpdateCounter % this.frameUpdateInterval === 0) {
+                playerSprite.currentFrame = (playerSprite.currentFrame + 1) % playerSprite.numFrames;
+            }
+    
+            drawPlayerFrame(this.x, this.y);
+    
+            this.frameUpdateCounter++;
         }
         moveUp() {
             if (this.currentLane > 1) {
@@ -130,15 +204,21 @@ function starts(){
     class AVoidBlock {
         constructor(size, speed, lane) {
             this.x = canvas.width + size;
-            this.y = 500 - size - (lane -1) *100;
+            this.y = 500 - size - (lane - 1) * 100;
             this.size = size;
             this.color = 'red';
             this.slideSpeed = speed;
+            this.currentSprite = 0; // Index to track the current sprite
+            this.frameUpdateInterval = 10; // Adjust this value to control frame rate
+            this.frameUpdateCounter = 0;
         }
     
         draw() {
-            ctx.fillStyle = this.color;
-            ctx.fillRect(this.x, this.y, this.size, this.size);
+            ctx.drawImage(
+                blockSprites[this.currentSprite],
+                0, 0, blockSprites[this.currentSprite].width, blockSprites[this.currentSprite].height,
+                this.x, this.y, this.size, this.size
+            );
         }
     
         slide() {
@@ -149,10 +229,12 @@ function starts(){
     
     
     
+    
+    
     function generateBlocks() {
         let timeDelay = randomNumberInterval(presetTime)/2;//To increase the difficulty, just increase /(number), it just decreases the time for setTimeout
         const randomLane = getRandnum(1,3);
-        arrayBlockss.push(new AVoidBlock(42, enemySpeed, randomLane));
+        arrayBlockss.push(new AVoidBlock(60, enemySpeed, randomLane));
     
         setTimeout(generateBlocks, timeDelay);
     }
@@ -189,17 +271,18 @@ function starts(){
     let animationId = null;
     
     
-    
     function animate() {
         animationId = requestAnimationFrame(animate);
+    
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-        //CanvasLogic
-        drawBackgroundLine(0,500,600,500);
-        drawBackgroundLine(0,400,600,400);
-        drawBackgroundLine(0,300,600,300);
-        drawScore();
+        // CanvasLogic
+        drawBackgroundLine(0, 500, 600, 500);
+        drawBackgroundLine(0, 400, 600, 400);
+        drawBackgroundLine(0, 300, 600, 300);
+    
         player.draw();
+        drawScore();
     
         increaseSpeed();
     
@@ -207,10 +290,21 @@ function starts(){
             arrayBlock.slide();
     
             if (squaresColliding(player, arrayBlock)) {
+                gameSFX.pause();
+                gameSFX.currentTime = 0;
+                gameOverSFX.play();
+                gameOverSFX.currentTime = 0;
                 cardScore.textContent = score;
                 card.style.display = 'block';
                 cancelAnimationFrame(animationId);
             }
+    
+            // Update AVoidBlock sprite frame
+            if (arrayBlock.frameUpdateCounter % arrayBlock.frameUpdateInterval === 0) {
+                arrayBlock.currentSprite = (arrayBlock.currentSprite + 1) % blockSprites.length;
+            }
+    
+            arrayBlock.frameUpdateCounter++;
     
             if (arrayBlock.x + arrayBlock.size <= 0) {
                 setTimeout(() => {
@@ -219,6 +313,10 @@ function starts(){
             }
         });
     }
+    
+    
+    
+    
     
     startGame();
     animate();
@@ -235,15 +333,20 @@ function starts(){
 
 addEventListener('keydown', (e) => {
     if (e.code == 'Space' && !player.shouldJump) {
+        jumpSFX.play();
         player.jumpCounter = 0;
         player.shouldJump = true;
     }else if (e.code === 'ArrowUp' && player.currentLane > 1 && !player.shouldJump) {
+        // scoreSFX.play();
         player.moveUp();
     } else if (e.code === 'ArrowDown' && player.currentLane < 3 && !player.shouldJump) {
+        // scoreSFX.play();
         player.moveDown();
     }else if(e.code === 'ArrowLeft'){
+        // scoreSFX.play();
         player.moveLeft();
     }else if(e.code === 'ArrowRight'){
+        // scoreSFX.play();
         player.moveRight();
     }
 });
